@@ -26,30 +26,22 @@ export default function SeatingApp() {
       assignedStudents: []
     }));
 
-    // EQUAL DISTRIBUTION LOGIC (Round Robin)
     let roomIndex = 0;
     while (pool.length > 0) {
       let room = distribution[roomIndex % distribution.length];
-      
       if (room.assignedStudents.length < room.capacity) {
         const last = room.assignedStudents[room.assignedStudents.length - 1];
-        
-        // Find best student (No same subject/class)
         let index = pool.findIndex(s => {
           if (!last) return true;
           return getVal(s, 'Subject') !== getVal(last, 'Subject') && 
                  getVal(s, 'Class') !== getVal(last, 'Class');
         });
-
         if (index === -1) index = pool.findIndex(s => !last || getVal(s, 'Subject') !== getVal(last, 'Subject'));
         if (index === -1) index = 0;
-
         room.assignedStudents.push(pool[index]);
         pool.splice(index, 1);
       }
-      
       roomIndex++;
-      // Safety break if all rooms are full but students remain
       if (distribution.every(r => r.assignedStudents.length >= r.capacity)) break;
     }
     setResult(distribution);
@@ -68,13 +60,24 @@ export default function SeatingApp() {
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto font-sans bg-slate-50 min-h-screen">
+      {/* CSS to force one page per classroom */}
+      <style jsx global>{`
+        @media print {
+          @page { size: A4; margin: 1cm; }
+          .break-after-page { page-break-after: always; display: block; clear: both; }
+          .no-print { display: none !important; }
+          body { background: white !important; }
+          .room-container { border: 1px solid #e2e8f0 !important; height: 98vh; display: flex; flex-direction: column; justify-content: space-between; }
+        }
+      `}</style>
+
       <div className="bg-white p-6 rounded-xl shadow-lg mb-8 print:hidden border-t-4 border-indigo-600">
         <h1 className="text-3xl font-black mb-1 text-indigo-950 text-center uppercase">BTS-3 Exam Seating</h1>
         <p className="text-center text-indigo-600 mb-6 font-bold text-xs tracking-[0.2em]">ADMINISTRATION PANEL</p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <h3 className="font-bold text-sm text-slate-700 mb-2">1. STUDENTS (.xlsx)</h3>
+            <h3 className="font-bold text-sm text-slate-700 mb-2 underline">1. STUDENTS (.xlsx)</h3>
             <input type="file" onChange={(e) => {
                const file = e.target.files[0];
                const reader = new FileReader();
@@ -86,7 +89,7 @@ export default function SeatingApp() {
             }} className="text-xs block w-full"/>
           </div>
           <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <h3 className="font-bold text-sm text-slate-700 mb-2">2. ROOMS (.xlsx)</h3>
+            <h3 className="font-bold text-sm text-slate-700 mb-2 underline">2. ROOMS (.xlsx)</h3>
             <input type="file" onChange={(e) => {
                const file = e.target.files[0];
                const reader = new FileReader();
@@ -106,70 +109,72 @@ export default function SeatingApp() {
       {result && result.map((room, idx) => {
         const stats = getStats(room.assignedStudents);
         return (
-          <div key={idx} className="mb-10 bg-white border border-slate-300 overflow-hidden break-after-page print:m-0 print:border-0">
-            <div className="bg-black text-white p-6 flex justify-between items-center border-b-4 border-indigo-600">
-              <h2 className="text-4xl font-black uppercase tracking-tighter">Room {room.roomNumber}</h2>
-              <div className="text-right">
-                <p className="font-bold text-lg">{room.teacher}</p>
-                <p className="text-[10px] text-indigo-400 font-bold tracking-widest uppercase">Lead Proctor</p>
+          <div key={idx} className="room-container mb-10 bg-white border border-slate-300 break-after-page print:m-0">
+            <div>
+              <div className="bg-black text-white p-4 flex justify-between items-center border-b-4 border-indigo-600">
+                <h2 className="text-3xl font-black uppercase tracking-tighter">Room {room.roomNumber}</h2>
+                <div className="text-right text-xs">
+                  <p className="font-bold">{room.teacher}</p>
+                  <p className="text-indigo-400 font-bold tracking-widest uppercase">Lead Proctor</p>
+                </div>
               </div>
-            </div>
-            
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-slate-100 text-slate-600 text-[10px] font-black uppercase">
-                  <th className="p-3 border-b">Seat</th>
-                  <th className="p-3 border-b">Full Name</th>
-                  <th className="p-3 border-b">Class</th>
-                  <th className="p-3 border-b">Subject</th>
-                  <th className="p-3 border-b text-right">Student ID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {room.assignedStudents.map((s, i) => (
-                  <tr key={i} className="border-b border-slate-100 text-xs">
-                    <td className="p-3 font-black text-indigo-600">{i + 1}</td>
-                    <td className="p-3 font-bold uppercase">{getVal(s, 'First name')} {getVal(s, 'Last Name')}</td>
-                    <td className="p-3 font-bold">{getVal(s, 'Class')}</td>
-                    <td className="p-3 font-semibold text-slate-500">{getVal(s, 'Subject')}</td>
-                    <td className="p-3 text-right font-mono text-slate-400">012-{getVal(s, 'Student ID')}</td>
+              
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-600 text-[9px] font-black uppercase">
+                    <th className="p-2 border-b">Seat</th>
+                    <th className="p-2 border-b">Full Name</th>
+                    <th className="p-2 border-b text-center">Class</th>
+                    <th className="p-2 border-b">Subject</th>
+                    <th className="p-2 border-b text-right">Student ID</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {room.assignedStudents.map((s, i) => (
+                    <tr key={i} className="border-b border-slate-100 text-[11px]">
+                      <td className="p-2 font-black text-indigo-600">{i + 1}</td>
+                      <td className="p-2 font-bold uppercase">{getVal(s, 'First name')} {getVal(s, 'Last Name')}</td>
+                      <td className="p-2 font-bold text-center">{getVal(s, 'Class')}</td>
+                      <td className="p-2 font-semibold text-slate-500">{getVal(s, 'Subject')}</td>
+                      <td className="p-2 text-right font-mono text-slate-400">012-{getVal(s, 'Student ID')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-            <div className="p-6 bg-slate-50 border-t border-slate-200">
-              <div className="grid grid-cols-2 gap-8 text-[10px]">
-                <div>
-                  <h4 className="font-black text-indigo-900 mb-2 uppercase border-b border-indigo-100 pb-1">Subject Breakdown</h4>
+            <div className="p-4 bg-slate-50 border-t border-slate-200">
+              <div className="grid grid-cols-2 gap-4 text-[9px]">
+                <div className="border border-slate-200 p-2 bg-white rounded">
+                  <h4 className="font-black text-indigo-900 mb-1 uppercase border-b border-indigo-100 pb-0.5">Subject Summary</h4>
                   {Object.entries(stats.subjects).map(([name, count]) => (
-                    <div key={name} className="flex justify-between py-0.5 border-b border-dotted border-slate-300">
+                    <div key={name} className="flex justify-between py-0.5">
                       <span>{name}</span><span className="font-bold">{count}</span>
                     </div>
                   ))}
                 </div>
-                <div>
-                  <h4 className="font-black text-indigo-900 mb-2 uppercase border-b border-indigo-100 pb-1">Class Breakdown</h4>
+                <div className="border border-slate-200 p-2 bg-white rounded">
+                  <h4 className="font-black text-indigo-900 mb-1 uppercase border-b border-indigo-100 pb-0.5">Class Summary</h4>
                   {Object.entries(stats.classes).map(([name, count]) => (
-                    <div key={name} className="flex justify-between py-0.5 border-b border-dotted border-slate-300">
+                    <div key={name} className="flex justify-between py-0.5">
                       <span>Class {name}</span><span className="font-bold">{count}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="mt-10 flex justify-between items-end border-t-2 border-slate-900 pt-4">
-                <div className="text-[10px] font-bold text-slate-500">
-                  GENERATED ON: {new Date().toLocaleDateString()}
+              <div className="mt-4 flex justify-between items-end border-t-2 border-slate-900 pt-2">
+                <div className="text-[8px] font-bold text-slate-400 italic">
+                  BTS-3 Official Record | Generated: {new Date().toLocaleDateString()}
                 </div>
-                <div className="flex gap-12">
+                <div className="flex gap-4">
                    <div className="text-center">
-                     <div className="w-40 border-b border-black h-8 mb-1"></div>
-                     <p className="text-[9px] font-bold uppercase">Proctor Signature</p>
+                     <div className="w-32 border-b border-black h-6 mb-1"></div>
+                     <p className="text-[8px] font-bold uppercase">Proctor Signature</p>
                    </div>
                    <div className="text-center">
-                     <div className="w-40 border-b border-black h-8 mb-1"></div>
-                     <p className="text-[9px] font-bold uppercase">Admin Signature</p>
+                     <div className="w-32 border-b border-black h-6 mb-1"></div>
+                     <p className="text-[8px] font-bold uppercase">Admin Signature</p>
                    </div>
                 </div>
               </div>
