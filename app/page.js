@@ -6,6 +6,7 @@ export default function SeatingApp() {
   const [students, setStudents] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [result, setResult] = useState(null);
+  const [schoolId, setSchoolId] = useState(""); // New state for dynamic School ID
 
   const getVal = (obj, key) => {
     const foundKey = Object.keys(obj).find(k => k.trim().toLowerCase() === key.toLowerCase());
@@ -51,16 +52,25 @@ export default function SeatingApp() {
     setResult(distribution);
   };
 
-  const getStats = (list) => {
+  const getSortedStats = (list) => {
     const stats = {};
     list.forEach(s => {
       const subj = getVal(s, 'Subject');
       const cls = getVal(s, 'Class');
-      const grade = cls.match(/\d+/) ? cls.match(/\d+/)[0] : cls;
-      const key = `${grade}th grade ${subj}`;
-      stats[key] = (stats[key] || 0) + 1;
+      const gradeMatch = cls.match(/\d+/);
+      const gradeNum = gradeMatch ? parseInt(gradeMatch[0]) : 99;
+      const key = `${gradeNum}th grade ${subj}`;
+      
+      if (!stats[key]) {
+        stats[key] = { label: key, count: 0, grade: gradeNum, subject: subj };
+      }
+      stats[key].count++;
     });
-    return stats;
+
+    return Object.values(stats).sort((a, b) => {
+      if (a.grade !== b.grade) return a.grade - b.grade;
+      return a.subject.localeCompare(b.subject);
+    });
   };
 
   return (
@@ -84,7 +94,17 @@ export default function SeatingApp() {
 
       <div className="bg-white p-6 rounded-xl shadow-lg mb-8 print:hidden border-t-4 border-indigo-600">
         <h1 className="text-3xl font-black mb-1 text-indigo-950 text-center uppercase">KBO EXAM SEATING</h1>
-        <p className="text-center text-indigo-600 mb-6 font-bold text-xs tracking-[0.2em]">ADMINISTRATION PANEL</p>
+        
+        <div className="my-6 max-w-xs mx-auto text-center">
+            <label className="block text-xs font-black text-indigo-600 uppercase mb-1 tracking-widest">Enter School ID</label>
+            <input 
+                type="text" 
+                placeholder="e.g. 012" 
+                value={schoolId}
+                onChange={(e) => setSchoolId(e.target.value)}
+                className="w-full border-2 border-indigo-100 p-2 rounded-lg text-center font-black focus:border-indigo-600 outline-none transition-all"
+            />
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
@@ -126,10 +146,7 @@ export default function SeatingApp() {
           </div>
         )}
 
-        <button 
-          onClick={generateSeating} 
-          className={`py-3 rounded-lg w-full font-bold mb-2 transition-all ${isOverCapacity ? 'bg-red-600 text-white' : 'bg-indigo-600 text-white'}`}
-        >
+        <button onClick={generateSeating} className={`py-3 rounded-lg w-full font-bold mb-2 transition-all ${isOverCapacity ? 'bg-red-600 text-white' : 'bg-indigo-600 text-white'}`}>
           GENERATE PLAN
         </button>
         
@@ -137,7 +154,7 @@ export default function SeatingApp() {
       </div>
 
       {result && result.map((room, idx) => {
-        const stats = getStats(room.assignedStudents);
+        const sortedStats = getSortedStats(room.assignedStudents);
         return (
           <div key={idx} className="room-container mb-10 bg-white break-after-page print:m-0">
             <div>
@@ -166,7 +183,9 @@ export default function SeatingApp() {
                       <td className="p-2 font-black uppercase text-sm">{getVal(s, 'First name')} {getVal(s, 'Last Name')}</td>
                       <td className="p-2 font-black text-center text-sm italic border-x border-slate-200 bg-slate-50">{getVal(s, 'Class')}</td>
                       <td className="p-2 font-bold text-slate-700 text-sm">{getVal(s, 'Subject')}</td>
-                      <td className="p-2 text-right font-mono font-black text-black text-xs">012-{getVal(s, 'Student ID')}</td>
+                      <td className="p-2 text-right font-mono font-normal text-black text-xs">
+                        {schoolId ? `${schoolId}-` : ""}{getVal(s, 'Student ID')}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -177,9 +196,9 @@ export default function SeatingApp() {
               <div className="mb-4">
                 <h4 className="font-black text-black text-xs mb-2 uppercase border-b-2 border-black pb-1">Subject Breakdown</h4>
                 <div className="grid grid-cols-2 gap-x-12 gap-y-1">
-                  {Object.entries(stats).map(([label, count]) => (
-                    <div key={label} className="flex justify-between text-[11px] border-b border-slate-200 uppercase font-bold">
-                      <span>{label}:</span><span className="font-black text-indigo-700">{count}</span>
+                  {sortedStats.map((stat) => (
+                    <div key={stat.label} className="flex justify-between text-[11px] border-b border-slate-200 uppercase font-bold">
+                      <span>{stat.label}:</span><span className="font-black text-indigo-700">{stat.count}</span>
                     </div>
                   ))}
                 </div>
@@ -195,7 +214,7 @@ export default function SeatingApp() {
                   </div>
                 </div>
                 <div className="text-[9px] font-black text-slate-500 font-mono">
-                  KBO-OFFICIAL | 012
+                  KBO-OFFICIAL {schoolId ? `| ${schoolId}` : ""}
                 </div>
               </div>
             </div>
