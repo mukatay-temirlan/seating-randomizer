@@ -60,7 +60,6 @@ export default function SeatingApp() {
       if (distribution.every(r => r.assignedStudents.length >= r.capacity)) break;
     }
 
-    // Balanced distribution logic across columns L, M, R
     distribution.forEach(room => {
       const totalInRoom = room.assignedStudents.length;
       const studentsToAssign = [...room.assignedStudents];
@@ -164,6 +163,8 @@ export default function SeatingApp() {
         <div className="space-y-6 mb-8">
           <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
             <h3 className="font-black mb-1 text-indigo-900 uppercase">1. Classrooms</h3>
+            {/* Added Description Back */}
+            <p className="text-[10px] text-slate-500 mb-3 italic">Excel must contain: "Room Number", "Teacher", and "Capacity".</p>
             <div className="space-y-2 mb-4">
               {rooms.map((room, idx) => (
                 <div key={idx} className="flex gap-2 items-center">
@@ -174,8 +175,6 @@ export default function SeatingApp() {
                 </div>
               ))}
             </div>
-            
-            {/* RESTORED UPLOAD BUTTONS SECTION */}
             <div className="flex gap-2">
               <button onClick={handleAddRoom} className="bg-white border-2 border-indigo-100 text-indigo-600 px-4 py-2 rounded font-bold text-xs">+ Add Room</button>
               <div className="relative">
@@ -200,6 +199,8 @@ export default function SeatingApp() {
 
           <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
             <h3 className="font-black mb-1 text-indigo-900 uppercase">2. Students</h3>
+            {/* Added Description Back */}
+            <p className="text-[10px] text-slate-500 mb-3 italic">Excel must contain: "First Name", "Last Name", "Class", "Subject", and "Student ID".</p>
             <input type="file" onChange={(e) => {
                const file = e.target.files[0];
                const reader = new FileReader();
