@@ -52,76 +52,94 @@ export default function SeatingApp() {
           return getVal(s, 'Subject') !== getVal(last, 'Subject') && currG !== lastG;
         });
         if (index === -1) index = 0; 
+        
         room.assignedStudents.push(pool[index]);
         pool.splice(index, 1);
       }
       roomIndex++;
       if (distribution.every(r => r.assignedStudents.length >= r.capacity)) break;
     }
+
+    // Balancing logic: Assign Seat IDs based on equal distribution across columns
+    distribution.forEach(room => {
+      const totalInRoom = room.assignedStudents.length;
+      const studentsToAssign = [...room.assignedStudents];
+      room.assignedStudents = []; // Re-filling with assigned IDs
+
+      const colCounts = [4, 5, 4]; // Max Desks per Column (L, M, R)
+      let currentStudentIdx = 0;
+
+      // Fill row by row across columns to ensure equal distribution
+      for (let deskRow = 1; deskRow <= 5; deskRow++) {
+        ["L", "M", "R"].forEach((col, colIdx) => {
+          if (deskRow <= colCounts[colIdx]) {
+            // Seat A
+            if (currentStudentIdx < totalInRoom) {
+              const s = studentsToAssign[currentStudentIdx++];
+              room.assignedStudents.push({ ...s, _seatId: `${col}-${deskRow}A` });
+            }
+            // Seat B
+            if (currentStudentIdx < totalInRoom) {
+              const s = studentsToAssign[currentStudentIdx++];
+              room.assignedStudents.push({ ...s, _seatId: `${col}-${deskRow}B` });
+            }
+          }
+        });
+      }
+    });
+
     setResult(distribution);
   };
 
   const SeatingMap = ({ assignedStudents }) => {
-    const columns = { left: [], middle: [], right: [] };
-    let sIdx = 0;
+    const getStudentBySeat = (id) => assignedStudents.find(s => s._seatId === id) || null;
 
-    // This function specifically creates "Pairs" of students for each desk
-    const fillColumn = (colArr, deskCount) => {
-      for (let i = 0; i < deskCount; i++) {
-        const studentA = assignedStudents[sIdx++] || null;
-        const studentB = assignedStudents[sIdx++] || null;
-        colArr.push({ studentA, studentB });
-      }
+    const Desk = ({ deskRow, colId }) => {
+      const sA = getStudentBySeat(`${colId}-${deskRow}A`);
+      const sB = getStudentBySeat(`${colId}-${deskRow}B`);
+      return (
+        <div className="mb-4 w-full">
+          <div className="text-[10px] font-black text-indigo-600 mb-1 uppercase tracking-tighter text-left">Desk {colId}-{deskRow}</div>
+          <div className="border-2 border-black flex h-16 bg-white shadow-sm">
+            <div className="flex-1 border-r border-dashed border-black p-1 flex flex-col justify-center items-center text-center">
+              <span className="text-[7px] text-slate-400 font-bold mb-1">{colId}-{deskRow}A</span>
+              <span className="text-[9px] font-black uppercase leading-none mb-1">
+                {sA ? `${getVal(sA, 'First Name').charAt(0)}. ${getVal(sA, 'Last Name')}` : "---"}
+              </span>
+              <span className="text-[8px] font-bold text-indigo-700">{sA ? getVal(sA, 'Class') : ""}</span>
+            </div>
+            <div className="flex-1 p-1 flex flex-col justify-center items-center text-center">
+              <span className="text-[7px] text-slate-400 font-bold mb-1">{colId}-{deskRow}B</span>
+              <span className="text-[9px] font-black uppercase leading-none mb-1">
+                {sB ? `${getVal(sB, 'First Name').charAt(0)}. ${getVal(sB, 'Last Name')}` : "---"}
+              </span>
+              <span className="text-[8px] font-bold text-indigo-700">{sB ? getVal(sB, 'Class') : ""}</span>
+            </div>
+          </div>
+        </div>
+      );
     };
 
-    fillColumn(columns.left, 4);   // 4 desks (8 seats)
-    fillColumn(columns.middle, 5); // 5 desks (10 seats)
-    fillColumn(columns.right, 4);  // 4 desks (8 seats)
-
-    const Desk = ({ desk, dIdx, colId }) => (
-      <div className="mb-4 w-full">
-        {/* Label for the Desk itself */}
-        <div className="text-[10px] font-black text-indigo-600 mb-1 uppercase tracking-tighter">
-          Desk {colId}-{dIdx + 1}
-        </div>
-        <div className="border-2 border-black flex h-16 bg-white shadow-sm">
-          {/* Seat Left */}
-          <div className="flex-1 border-r border-dashed border-black p-1 flex flex-col justify-center items-center text-center">
-            <span className="text-[7px] text-slate-400 font-bold mb-1">ID: {colId}-{dIdx + 1}A</span>
-            <span className="text-[9px] font-black uppercase leading-none mb-1">
-              {desk.studentA ? `${getVal(desk.studentA, 'First Name').charAt(0)}. ${getVal(desk.studentA, 'Last Name')}` : "---"}
-            </span>
-            <span className="text-[8px] font-bold text-indigo-700">{desk.studentA ? getVal(desk.studentA, 'Class') : ""}</span>
-          </div>
-          {/* Seat Right */}
-          <div className="flex-1 p-1 flex flex-col justify-center items-center text-center">
-            <span className="text-[7px] text-slate-400 font-bold mb-1">ID: {colId}-{dIdx + 1}B</span>
-            <span className="text-[9px] font-black uppercase leading-none mb-1">
-              {desk.studentB ? `${getVal(desk.studentB, 'First Name').charAt(0)}. ${getVal(desk.studentB, 'Last Name')}` : "---"}
-            </span>
-            <span className="text-[8px] font-bold text-indigo-700">{desk.studentB ? getVal(desk.studentB, 'Class') : ""}</span>
-          </div>
-        </div>
-      </div>
-    );
-
     return (
-      <div className="mt-4 p-4 border-2 border-dashed border-slate-300 rounded-lg">
-        <div className="flex justify-around gap-6">
+      <div className="mt-4 p-4 border-2 border-dashed border-slate-300 rounded-lg flex flex-col h-full">
+        {/* Front of Class at top of visual map */}
+        <div className="mb-8 border-4 border-double border-black w-48 mx-auto text-center font-black text-sm p-2 uppercase">Front / Proctor</div>
+        
+        <div className="flex justify-around gap-6 flex-1">
+          {/* Column L: Desk 1 is at the top (near front) */}
           <div className="flex-1">
-            <p className="text-[12px] font-black mb-4 border-b-2 border-black text-center uppercase tracking-widest">Column L</p>
-            {columns.left.map((d, i) => <Desk key={i} desk={d} dIdx={i} colId="L" />)}
+            <p className="text-[12px] font-black mb-4 border-b-2 border-black text-center uppercase">Column L</p>
+            {[1, 2, 3, 4].map(num => <Desk key={num} deskRow={num} colId="L" />)}
           </div>
           <div className="flex-1">
-            <p className="text-[12px] font-black mb-4 border-b-2 border-black text-center uppercase tracking-widest">Column M</p>
-            {columns.middle.map((d, i) => <Desk key={i} desk={d} dIdx={i} colId="M" />)}
+            <p className="text-[12px] font-black mb-4 border-b-2 border-black text-center uppercase">Column M</p>
+            {[1, 2, 3, 4, 5].map(num => <Desk key={num} deskRow={num} colId="M" />)}
           </div>
           <div className="flex-1">
-            <p className="text-[12px] font-black mb-4 border-b-2 border-black text-center uppercase tracking-widest">Column R</p>
-            {columns.right.map((d, i) => <Desk key={i} desk={d} dIdx={i} colId="R" />)}
+            <p className="text-[12px] font-black mb-4 border-b-2 border-black text-center uppercase">Column R</p>
+            {[1, 2, 3, 4].map(num => <Desk key={num} deskRow={num} colId="R" />)}
           </div>
         </div>
-        <div className="mt-8 border-4 border-double border-black w-48 mx-auto text-center font-black text-sm p-2 uppercase">Front / Proctor</div>
       </div>
     );
   };
@@ -135,15 +153,12 @@ export default function SeatingApp() {
           .break-after-page { page-break-after: always; display: block; clear: both; }
           .no-print { display: none !important; }
           body { background: white !important; }
-          .room-container, .seating-scheme-page { 
-            height: 98vh; display: flex; flex-direction: column; 
-            justify-content: space-between; border: 2px solid #000 !important; padding: 15px; 
-          }
-          .seating-scheme-page { page-break-before: always; }
+          .room-container, .seating-scheme-page { height: 98vh; display: flex; flex-direction: column; border: 2px solid #000 !important; padding: 15px; }
+          .seating-scheme-page { page-break-before: always; justify-content: flex-start; }
         }
       `}</style>
 
-      {/* ADMIN PANEL (Same Indigo design as before) */}
+      {/* ADMIN PANEL */}
       <div className="bg-white p-6 rounded-xl shadow-lg mb-8 print:hidden border-t-4 border-indigo-600">
         <h1 className="text-3xl font-black mb-1 text-indigo-950 text-center uppercase">KBO EXAM SEATING</h1>
         <div className="my-6 max-w-xs mx-auto text-center">
@@ -151,7 +166,6 @@ export default function SeatingApp() {
             <input type="text" placeholder="e.g. 012" value={schoolId} onChange={(e) => setSchoolId(e.target.value)}
                 className="w-full border-2 border-indigo-100 p-2 rounded-lg text-center font-black outline-none transition-all focus:border-indigo-600"/>
         </div>
-        
         <div className="space-y-6 mb-8">
           <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
             <h3 className="font-black mb-1 text-indigo-900 uppercase">1. Classrooms</h3>
@@ -165,28 +179,8 @@ export default function SeatingApp() {
                 </div>
               ))}
             </div>
-            <div className="flex gap-2">
-              <button onClick={handleAddRoom} className="bg-white border-2 border-indigo-100 text-indigo-600 px-4 py-2 rounded font-bold text-xs">+ Add Room</button>
-              <div className="relative">
-                <input type="file" onChange={(e) => {
-                    const file = e.target.files[0];
-                    const reader = new FileReader();
-                    reader.onload = (evt) => {
-                      const wb = XLSX.read(evt.target.result, { type: 'binary' });
-                      const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-                      setRooms(data.map(r => ({ 
-                        number: getVal(r, 'Room Number') || getVal(r, 'classroom name'), 
-                        teacher: getVal(r, 'Teacher') || getVal(r, 'supervisor'), 
-                        capacity: getVal(r, 'Capacity') || getVal(r, 'seat capacity') 
-                      })));
-                    };
-                    reader.readAsBinaryString(file);
-                }} className="absolute inset-0 opacity-0 cursor-pointer"/>
-                <button className="bg-white border-2 border-indigo-100 text-indigo-600 px-4 py-2 rounded font-bold text-xs">↑ Upload Rooms</button>
-              </div>
-            </div>
+            <button onClick={handleAddRoom} className="bg-white border-2 border-indigo-100 text-indigo-600 px-4 py-2 rounded font-bold text-xs">+ Add Room</button>
           </div>
-          
           <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
             <h3 className="font-black mb-1 text-indigo-900 uppercase">2. Students</h3>
             <input type="file" onChange={(e) => {
@@ -200,42 +194,38 @@ export default function SeatingApp() {
             }} className="w-full text-xs border border-dashed border-slate-300 p-2 bg-white rounded cursor-pointer"/>
           </div>
         </div>
-        
         <button onClick={generateSeating} className="py-3 rounded-lg w-full font-black bg-indigo-600 text-white mb-2 shadow-md">GENERATE PLAN</button>
         {result && <button onClick={() => window.print()} className="bg-emerald-600 text-white py-3 rounded-lg w-full font-black shadow-md">PRINT ALL DOCUMENTS</button>}
-        
-        <div className="mt-8 pt-4 border-t border-slate-100 text-center text-[10px] text-slate-400 font-bold uppercase">Inspired by <a href="mailto:mukatay.temirlan@gmail.com" className="text-indigo-600 underline">Temirlan Mukatay</a></div>
       </div>
 
       {/* PRINTABLE PAGES */}
       {result && result.map((room, idx) => (
         <React.Fragment key={idx}>
-          {/* Page 1: Attendance List */}
           <div className="room-container mb-10 bg-white break-after-page shadow-sm">
             <div>
               <div className="bg-black text-white p-4 flex justify-between items-center border-b-4 border-indigo-600">
-                <h2 className="text-2xl font-black uppercase">ROOM {room.roomNumber} - ATTENDANCE</h2>
-                <div className="text-right">
-                    <p className="text-xs font-black uppercase leading-none">{room.teacher}</p>
-                </div>
+                <h2 className="text-2xl font-black uppercase tracking-tight">ROOM {room.roomNumber} - ATTENDANCE</h2>
+                <div className="text-right"><p className="text-xs font-black uppercase leading-none">{room.teacher}</p></div>
               </div>
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-100 text-slate-600 text-[10px] font-black uppercase border-b-2 border-black">
-                    <th className="p-2 border-r w-8">Seat</th>
+                    <th className="p-2 border-r w-14">Seat ID</th>
                     <th className="p-2 border-r">Full Name</th>
-                    <th className="p-2 text-center border-r w-12">Class</th>
+                    <th className="p-2 text-center border-r w-10">Class</th>
                     <th className="p-2 border-r w-24">Subject</th>
-                    <th className="p-2 text-center w-32">Signature</th>
+                    <th className="p-2 border-r w-24">Student ID</th>
+                    <th className="p-2 text-center w-28">Signature</th>
                   </tr>
                 </thead>
                 <tbody>
                   {room.assignedStudents.map((s, i) => (
                     <tr key={i} className="border-b border-slate-200">
-                      <td className="p-1 font-black text-indigo-700 border-r">{i + 1}</td>
+                      <td className="p-1 font-black text-indigo-700 border-r bg-indigo-50 text-center">{s._seatId}</td>
                       <td className="p-1 font-black uppercase text-xs">{getVal(s, 'First Name')} {getVal(s, 'Last Name')}</td>
                       <td className="p-1 text-center font-bold italic border-x bg-slate-50 text-xs">{getVal(s, 'Class')}</td>
                       <td className="p-1 text-slate-500 text-xs border-r">{getVal(s, 'Subject')}</td>
+                      <td className="p-1 text-[10px] font-bold border-r text-center">{schoolId ? `${schoolId}-` : ""}{getVal(s, 'Student ID')}</td>
                       <td className="p-1 align-bottom"><div className="border-b border-black h-4"></div></td>
                     </tr>
                   ))}
@@ -244,11 +234,10 @@ export default function SeatingApp() {
             </div>
           </div>
           
-          {/* Page 2: Visual Map with Double Desks and IDs */}
           <div className="seating-scheme-page bg-white break-after-page">
             <div className="border-b-4 border-black pb-2 mb-2">
               <h2 className="text-2xl font-black uppercase text-center tracking-tighter">Visual Seating Map: Room {room.roomNumber}</h2>
-              <p className="text-center font-bold text-indigo-600 uppercase text-[9px] tracking-widest">ORIENTATION: FRONT</p>
+              <p className="text-center font-bold text-indigo-600 uppercase text-[9px] tracking-widest">ORIENTATION: LOOKING FROM FRONT</p>
             </div>
             <SeatingMap assignedStudents={room.assignedStudents} />
           </div>
