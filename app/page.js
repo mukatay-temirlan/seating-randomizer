@@ -93,7 +93,7 @@ export default function SeatingApp() {
         }
       `}</style>
 
-      {/* ADMIN PANEL - Restored Indigo Design */}
+      {/* ADMIN PANEL */}
       <div className="bg-white p-6 rounded-xl shadow-lg mb-8 print:hidden border-t-4 border-indigo-600">
         <h1 className="text-3xl font-black mb-1 text-indigo-950 text-center uppercase">KBO EXAM SEATING</h1>
         <p className="text-center text-indigo-600 mb-6 font-bold text-xs tracking-[0.2em]">ADMINISTRATION PANEL</p>
@@ -109,21 +109,15 @@ export default function SeatingApp() {
             />
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <h3 className="font-bold mb-2 text-sm uppercase underline text-slate-700">1. STUDENTS (.xlsx)</h3>
-            <input type="file" onChange={(e) => {
-               const file = e.target.files[0];
-               const reader = new FileReader();
-               reader.onload = (evt) => {
-                 const wb = XLSX.read(evt.target.result, { type: 'binary' });
-                 setStudents(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
-               };
-               reader.readAsBinaryString(file);
-            }} className="w-full text-xs"/>
-          </div>
-          <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <h3 className="font-bold mb-2 text-sm uppercase underline text-slate-700">2. ROOMS (.xlsx)</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          {/* Section 1: Rooms */}
+          <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
+            <h3 className="font-black mb-2 text-indigo-900 uppercase">1. Define Classrooms</h3>
+            <p className="text-[11px] text-slate-600 mb-4 leading-relaxed">
+              Upload an <strong>.xlsx</strong> or <strong>.csv</strong> file with room data.<br/>
+              <span className="text-indigo-600 font-bold">Required columns:</span> "Room Number", "Capacity". <br/>
+              <span className="text-slate-400 font-bold">Optional:</span> "Teacher" (Supervisor).
+            </p>
             <input type="file" onChange={(e) => {
                const file = e.target.files[0];
                const reader = new FileReader();
@@ -132,7 +126,25 @@ export default function SeatingApp() {
                  setRooms(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
                };
                reader.readAsBinaryString(file);
-            }} className="w-full text-xs"/>
+            }} className="w-full text-xs border border-dashed border-slate-300 p-2 bg-white rounded cursor-pointer"/>
+          </div>
+
+          {/* Section 2: Students */}
+          <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
+            <h3 className="font-black mb-2 text-indigo-900 uppercase">2. Upload Student List</h3>
+            <p className="text-[11px] text-slate-600 mb-4 leading-relaxed">
+              Upload an <strong>.xlsx</strong> or <strong>.csv</strong> file with student data.<br/>
+              <span className="text-indigo-600 font-bold">Required columns:</span> "First Name", "Last Name", "Class", "Subject", "Student ID".
+            </p>
+            <input type="file" onChange={(e) => {
+               const file = e.target.files[0];
+               const reader = new FileReader();
+               reader.onload = (evt) => {
+                 const wb = XLSX.read(evt.target.result, { type: 'binary' });
+                 setStudents(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
+               };
+               reader.readAsBinaryString(file);
+            }} className="w-full text-xs border border-dashed border-slate-300 p-2 bg-white rounded cursor-pointer"/>
           </div>
         </div>
 
@@ -154,9 +166,14 @@ export default function SeatingApp() {
         </button>
         
         {result && <button onClick={() => window.print()} className="bg-emerald-600 text-white py-3 rounded-lg w-full font-bold shadow-md hover:bg-emerald-700">DOWNLOAD PDF / PRINT</button>}
+
+        {/* Credit Footer */}
+        <div className="mt-8 pt-4 border-t border-slate-100 text-center text-[11px] text-slate-400 font-bold uppercase tracking-widest">
+          Inspired by <a href="mailto:mukatay.temirlan@gmail.com" className="text-indigo-600 hover:text-indigo-800 transition-colors underline decoration-dotted">Temirlan Mukatay</a>
+        </div>
       </div>
 
-      {/* PRINTABLE PAGES - Restored Indigo Details */}
+      {/* PRINTABLE PAGES */}
       {result && result.map((room, idx) => {
         const sortedStats = getSortedStats(room.assignedStudents);
         return (
