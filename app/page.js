@@ -14,12 +14,10 @@ export default function SeatingApp() {
   };
 
   const handleAddRoom = () => setRooms([...rooms, { number: "", teacher: "", capacity: "" }]);
-  
   const handleRemoveRoom = (index) => {
     const newRooms = rooms.filter((_, i) => i !== index);
     setRooms(newRooms.length ? newRooms : [{ number: "", teacher: "", capacity: "" }]);
   };
-
   const handleRoomChange = (index, field, value) => {
     const newRooms = [...rooms];
     newRooms[index][field] = value;
@@ -49,13 +47,17 @@ export default function SeatingApp() {
       let room = distribution[roomIndex % distribution.length];
       if (room.assignedStudents.length < room.capacity) {
         const last = room.assignedStudents[room.assignedStudents.length - 1];
+        
         let index = pool.findIndex(s => {
           if (!last) return true;
-          return getVal(s, 'Subject') !== getVal(last, 'Subject') && 
-                 getVal(s, 'Class') !== getVal(last, 'Class');
+          const currGrade = getVal(s, 'Class').match(/\d+/)?.[0];
+          const lastGrade = getVal(last, 'Class').match(/\d+/)?.[0];
+          // Rule: Different Subject AND Different Grade Number (1 grade apart)
+          return getVal(s, 'Subject') !== getVal(last, 'Subject') && currGrade !== lastGrade;
         });
-        if (index === -1) index = pool.findIndex(s => !last || getVal(s, 'Subject') !== getVal(last, 'Subject'));
-        if (index === -1) index = 0;
+
+        if (index === -1) index = 0; // Fallback if impossible
+        
         room.assignedStudents.push(pool[index]);
         pool.splice(index, 1);
       }
@@ -65,18 +67,48 @@ export default function SeatingApp() {
     setResult(distribution);
   };
 
-  const getSortedStats = (list) => {
-    const stats = {};
-    list.forEach(s => {
-      const subj = getVal(s, 'Subject');
-      const cls = getVal(s, 'Class');
-      const gradeMatch = cls.match(/\d+/);
-      const gradeNum = gradeMatch ? parseInt(gradeMatch[0]) : 99;
-      const key = `${gradeNum}th grade ${subj}`;
-      if (!stats[key]) stats[key] = { label: key, count: 0, grade: gradeNum, subject: subj };
-      stats[key].count++;
+  const SeatingMap = ({ assignedStudents }) => {
+    // Layout Logic: Left (4), Middle (5), Right (4)
+    const columns = { left: [], middle: [], right: [] };
+    assignedStudents.forEach((s, i) => {
+      const row = Math.floor(i / 13);
+      const pos = i % 13;
+      if (pos < 4) columns.left.push(s);
+      else if (pos < 9) columns.middle.push(s);
+      else columns.right.push(s);
     });
-    return Object.values(stats).sort((a, b) => a.grade !== b.grade ? a.grade - b.grade : a.subject.localeCompare(b.subject));
+
+    const Desk = ({ student, index }) => (
+      <div className="border border-black p-1 h-14 w-full flex flex-col justify-center items-center text-center bg-white mb-2 shadow-sm">
+        <span className="text-[7px] text-slate-400 uppercase font-black">Seat {index + 1}</span>
+        <span className="text-[9px] font-black leading-tight uppercase">
+          {student ? `${getVal(student, 'First Name').charAt(0)}. ${getVal(student, 'Last Name')}` : "EMPTY"}
+        </span>
+        <span className="text-[8px] italic font-bold text-indigo-700">{student ? getVal(student, 'Class') : ""}</span>
+      </div>
+    );
+
+    return (
+      <div className="mt-4 p-4 border-2 border-dashed border-slate-300 rounded-lg">
+        <div className="flex justify-around gap-4">
+          <div className="flex-1 flex flex-col items-center">
+            <p className="text-[10px] font-black mb-2 border-b w-full text-center">LEFT COLUMN</p>
+            {columns.left.map((s, i) => <Desk key={i} student={s} index={i} />)}
+          </div>
+          <div className="flex-1 flex flex-col items-center">
+            <p className="text-[10px] font-black mb-2 border-b w-full text-center">MIDDLE COLUMN</p>
+            {columns.middle.map((s, i) => <Desk key={i} student={s} index={i + 4} />)}
+          </div>
+          <div className="flex-1 flex flex-col items-center">
+            <p className="text-[10px] font-black mb-2 border-b w-full text-center">RIGHT COLUMN</p>
+            {columns.right.map((s, i) => <Desk key={i} student={s} index={i + 9} />)}
+          </div>
+        </div>
+        <div className="mt-8 border-4 border-double border-black w-32 mx-auto text-center font-black text-xs p-2">
+          TEACHER'S DESK
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -88,69 +120,34 @@ export default function SeatingApp() {
           .break-after-page { page-break-after: always; display: block; clear: both; }
           .no-print { display: none !important; }
           body { background: white !important; }
-          .room-container { 
-            height: 97vh; 
-            display: flex; flex-direction: column; justify-content: space-between;
-            border: 2px solid #000 !important; padding: 2px;
-          }
+          .room-container { height: 98vh; display: flex; flex-direction: column; justify-content: space-between; border: 2px solid #000 !important; padding: 2px; }
+          .seating-scheme-page { page-break-before: always; height: 98vh; border: 2px solid #000 !important; padding: 20px; }
         }
       `}</style>
 
+      {/* ADMIN PANEL */}
       <div className="bg-white p-6 rounded-xl shadow-lg mb-8 print:hidden border-t-4 border-indigo-600">
         <h1 className="text-3xl font-black mb-1 text-indigo-950 text-center uppercase">KBO EXAM SEATING</h1>
-        
         <div className="my-6 max-w-xs mx-auto text-center">
-            <label className="block text-xs font-black text-indigo-600 uppercase mb-1 tracking-widest">Enter School ID</label>
+            <label className="block text-xs font-black text-indigo-600 uppercase mb-1 tracking-widest">School ID</label>
             <input type="text" placeholder="e.g. 012" value={schoolId} onChange={(e) => setSchoolId(e.target.value)}
-                className="w-full border-2 border-indigo-100 p-2 rounded-lg text-center font-black focus:border-indigo-600 outline-none transition-all"/>
+                className="w-full border-2 border-indigo-100 p-2 rounded-lg text-center font-black outline-none"/>
         </div>
-        
-        <div className="space-y-8 mb-8">
-          {/* 1. Define Classrooms */}
-          <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
-            <h3 className="font-black mb-1 text-indigo-900 uppercase">1. Define Classrooms</h3>
-            <p className="text-[12px] text-slate-600 mb-4">
-              Add classrooms manually, or upload a .csv file. <br/>
-              <span className="text-indigo-600 font-bold text-[10px]">Required columns for upload:</span> "Room Number", "Capacity".
-            </p>
-            
-            <div className="space-y-2 mb-4">
-              {rooms.map((room, idx) => (
-                <div key={idx} className="flex gap-2 items-center">
-                  <span className="text-xs font-bold text-slate-400 w-4">{idx + 1}.</span>
-                  <input placeholder="Room 101" value={room.number} onChange={(e) => handleRoomChange(idx, 'number', e.target.value)} className="border p-2 rounded text-xs w-full focus:border-indigo-500 outline-none"/>
-                  <input placeholder="Supervisor" value={room.teacher} onChange={(e) => handleRoomChange(idx, 'teacher', e.target.value)} className="border p-2 rounded text-xs w-full focus:border-indigo-500 outline-none"/>
-                  <input type="number" placeholder="Cap." value={room.capacity} onChange={(e) => handleRoomChange(idx, 'capacity', e.target.value)} className="border p-2 rounded text-xs w-20 focus:border-indigo-500 outline-none"/>
-                  <button onClick={() => handleRemoveRoom(idx)} className="text-slate-400 hover:text-red-500 p-2">✕</button>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex gap-2">
-              <button onClick={handleAddRoom} className="bg-white border-2 border-indigo-100 text-indigo-600 px-4 py-2 rounded font-bold text-xs hover:bg-indigo-50">+ Add Classroom</button>
-              <div className="relative">
-                <input type="file" onChange={(e) => {
-                    const file = e.target.files[0];
-                    const reader = new FileReader();
-                    reader.onload = (evt) => {
-                      const wb = XLSX.read(evt.target.result, { type: 'binary' });
-                      const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-                      setRooms(data.map(r => ({ number: getVal(r, 'Room Number'), teacher: getVal(r, 'Teacher'), capacity: getVal(r, 'Capacity') })));
-                    };
-                    reader.readAsBinaryString(file);
-                }} className="absolute inset-0 opacity-0 cursor-pointer"/>
-                <button className="bg-white border-2 border-indigo-100 text-indigo-600 px-4 py-2 rounded font-bold text-xs">↑ Upload List</button>
+        <div className="space-y-4 mb-8">
+          <div className="bg-slate-50 p-4 rounded-lg border">
+            <h3 className="font-black text-indigo-900 uppercase text-sm mb-2">1. Classrooms (Manual or File)</h3>
+            {rooms.map((room, idx) => (
+              <div key={idx} className="flex gap-2 mb-2">
+                <input placeholder="Room" value={room.number} onChange={(e) => handleRoomChange(idx, 'number', e.target.value)} className="border p-1 text-xs w-full"/>
+                <input placeholder="Proctor" value={room.teacher} onChange={(e) => handleRoomChange(idx, 'teacher', e.target.value)} className="border p-1 text-xs w-full"/>
+                <input placeholder="Cap." value={room.capacity} onChange={(e) => handleRoomChange(idx, 'capacity', e.target.value)} className="border p-1 text-xs w-20"/>
+                <button onClick={() => handleRemoveRoom(idx)}>✕</button>
               </div>
-            </div>
+            ))}
+            <button onClick={handleAddRoom} className="text-indigo-600 text-xs font-bold">+ Add Room</button>
           </div>
-
-          {/* 2. Upload Student List */}
-          <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
-            <h3 className="font-black mb-1 text-indigo-900 uppercase">2. Upload Student List</h3>
-            <p className="text-[12px] text-slate-600 mb-4">
-              Upload a .csv file with student data. <br/>
-              <span className="text-indigo-600 font-bold text-[10px]">Required:</span> "First Name", "Last Name", "Class", "Subject", "Student ID".
-            </p>
+          <div className="bg-slate-50 p-4 rounded-lg border">
+            <h3 className="font-black text-indigo-900 uppercase text-sm mb-2">2. Upload Students</h3>
             <input type="file" onChange={(e) => {
                const file = e.target.files[0];
                const reader = new FileReader();
@@ -159,89 +156,68 @@ export default function SeatingApp() {
                  setStudents(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
                };
                reader.readAsBinaryString(file);
-            }} className="w-full text-xs border border-dashed border-slate-300 p-2 bg-white rounded cursor-pointer"/>
+            }} className="w-full text-xs"/>
           </div>
         </div>
-
-        {(students.length > 0 && totalSeats > 0) && (
-          <div className={`mb-4 p-4 rounded-lg flex justify-between items-center ${isOverCapacity ? 'bg-red-50 border-2 border-red-200' : 'bg-emerald-50 border-2 border-emerald-200'}`}>
-            <div className="text-sm font-bold">
-              <p className={isOverCapacity ? 'text-red-700' : 'text-emerald-700 font-black'}>{isOverCapacity ? '⚠️ NOT ENOUGH SEATS!' : '✅ CAPACITY OK'}</p>
-              <p className="text-[10px] text-slate-500 uppercase font-black">Students: {studentCount} | Total Seats: {totalSeats}</p>
-            </div>
-          </div>
-        )}
-
-        <button onClick={generateSeating} className={`py-3 rounded-lg w-full font-bold mb-2 transition-all shadow-md ${isOverCapacity ? 'bg-red-600 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>GENERATE PLAN</button>
-        {result && <button onClick={() => window.print()} className="bg-emerald-600 text-white py-3 rounded-lg w-full font-bold shadow-md">DOWNLOAD PDF / PRINT</button>}
-
-        <div className="mt-8 pt-4 border-t border-slate-100 text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-          Inspired by <a href="mailto:mukatay.temirlan@gmail.com" className="text-indigo-600 hover:text-indigo-800 transition-colors underline decoration-dotted">Temirlan Mukatay</a>
+        <button onClick={generateSeating} className="py-3 rounded-lg w-full font-black bg-indigo-600 text-white mb-2">GENERATE PLAN</button>
+        {result && <button onClick={() => window.print()} className="bg-emerald-600 text-white py-3 rounded-lg w-full font-black">PRINT ALL PAGES</button>}
+        
+        <div className="mt-8 text-center text-[10px] text-slate-400 font-bold uppercase">
+          Inspired by <a href="mailto:mukatay.temirlan@gmail.com" className="text-indigo-600 underline">Temirlan Mukatay</a>
         </div>
       </div>
 
-      {/* PRINTABLE PAGES (Same logic as before) */}
-      {result && result.map((room, idx) => {
-        const sortedStats = getSortedStats(room.assignedStudents);
-        return (
-          <div key={idx} className="room-container mb-10 bg-white break-after-page print:m-0">
+      {/* PRINTABLE CONTENT */}
+      {result && result.map((room, idx) => (
+        <React.Fragment key={idx}>
+          {/* Page 1: Student List */}
+          <div className="room-container mb-10 bg-white break-after-page">
             <div>
               <div className="bg-black text-white p-4 flex justify-between items-center border-b-4 border-indigo-600">
-                <h2 className="text-3xl font-black uppercase tracking-tighter">KBO EXAM SEATING | ROOM {room.roomNumber}</h2>
-                <div className="text-right">
-                  <p className="font-black uppercase tracking-widest text-sm">{room.teacher}</p>
-                  <p className="text-indigo-400 font-bold uppercase text-[10px]">Proctor</p>
-                </div>
+                <h2 className="text-2xl font-black uppercase">ROOM {room.roomNumber} - LIST</h2>
+                <div className="text-right"><p className="text-xs uppercase font-black">{room.teacher}</p></div>
               </div>
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-100 text-slate-600 text-[11px] font-black uppercase border-b-2 border-black">
-                    <th className="p-2 border-r border-slate-300 w-8">Seat</th>
-                    <th className="p-2 border-r border-slate-300">Full Name</th>
-                    <th className="p-2 text-center border-r border-slate-300 w-16">Class</th>
-                    <th className="p-2 border-r border-slate-300 w-28">Subject</th>
-                    <th className="p-2 border-r border-slate-300 text-right w-28">Student ID</th>
-                    <th className="p-2 text-center w-36">Student Signature</th>
+                  <tr className="bg-slate-100 text-[10px] font-black uppercase border-b-2 border-black">
+                    <th className="p-2 border-r w-8">Seat</th>
+                    <th className="p-2 border-r">Name</th>
+                    <th className="p-2 border-r text-center w-12">Class</th>
+                    <th className="p-2 border-r w-24">Subject</th>
+                    <th className="p-2 border-r text-right w-24">ID</th>
+                    <th className="p-2 text-center w-32">Signature</th>
                   </tr>
                 </thead>
                 <tbody>
                   {room.assignedStudents.map((s, i) => (
                     <tr key={i} className="border-b border-slate-200">
-                      <td className="p-2 font-black text-indigo-700 text-lg border-r border-slate-100 w-10">{i + 1}</td>
-                      <td className="p-2 font-black uppercase text-sm">{getVal(s, 'First name')} {getVal(s, 'Last Name')}</td>
-                      <td className="p-2 font-black text-center text-sm italic border-x border-slate-100 bg-slate-50">{getVal(s, 'Class')}</td>
-                      <td className="p-2 font-bold text-slate-600 text-sm border-r border-slate-100">{getVal(s, 'Subject')}</td>
-                      <td className="p-2 text-right font-normal text-xs border-r border-slate-100 text-slate-500">
-                        {schoolId ? `${schoolId}-` : ""}{getVal(s, 'Student ID')}
-                      </td>
-                      <td className="p-2 align-bottom"><div className="border-b border-black w-full h-6"></div></td>
+                      <td className="p-1 font-black text-indigo-700 border-r">{i + 1}</td>
+                      <td className="p-1 font-black uppercase text-xs">{getVal(s, 'First Name')} {getVal(s, 'Last Name')}</td>
+                      <td className="p-1 text-center font-bold italic border-x bg-slate-50 text-xs">{getVal(s, 'Class')}</td>
+                      <td className="p-1 text-slate-500 text-xs border-r">{getVal(s, 'Subject')}</td>
+                      <td className="p-1 text-right text-[10px] border-r">{schoolId ? `${schoolId}-` : ""}{getVal(s, 'Student ID')}</td>
+                      <td className="p-1 align-bottom"><div className="border-b border-black h-4"></div></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <div className="p-4 bg-white border-t-4 border-indigo-600">
-              <div className="mb-4">
-                <h4 className="font-black text-indigo-950 text-xs mb-2 uppercase border-b-2 border-indigo-100 pb-1">Subject Breakdown</h4>
-                <div className="grid grid-cols-2 gap-x-12 gap-y-1">
-                  {sortedStats.map((stat) => (
-                    <div key={stat.label} className="flex justify-between text-[11px] border-b border-slate-100 uppercase font-bold">
-                      <span className="text-slate-600">{stat.label}:</span><span className="font-black text-indigo-700">{stat.count}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="flex justify-between items-center mt-4 pt-4 border-t-2 border-black">
-                <div className="flex items-center gap-10">
-                  <div className="text-sm font-black uppercase text-indigo-950">Total Participated: <span className="underline ml-2">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
-                  <div className="text-sm font-black uppercase flex items-center text-indigo-950">Proctor Signature: <div className="ml-2 w-64 border-b-2 border-black h-8"></div></div>
-                </div>
-                <div className="text-[10px] font-bold text-slate-400 font-mono italic">KBO-OFFICIAL {schoolId ? `| ${schoolId}` : ""}</div>
-              </div>
+          </div>
+
+          {/* Page 2: Seating Scheme */}
+          <div className="seating-scheme-page bg-white break-after-page">
+            <div className="border-b-4 border-black pb-2 mb-4">
+              <h2 className="text-3xl font-black uppercase text-center">SEATING SCHEME: ROOM {room.roomNumber}</h2>
+              <p className="text-center font-bold text-indigo-600 uppercase text-xs tracking-widest">Proctor: {room.teacher}</p>
+            </div>
+            <SeatingMap assignedStudents={room.assignedStudents} />
+            <div className="mt-auto pt-10 flex justify-between text-[10px] font-black uppercase text-slate-400">
+                <span>KBO-OFFICIAL {schoolId}</span>
+                <span>{new Date().toLocaleDateString()}</span>
             </div>
           </div>
-        );
-      })}
+        </React.Fragment>
+      ))}
     </div>
   );
 }
