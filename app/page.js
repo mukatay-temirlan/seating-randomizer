@@ -214,49 +214,82 @@ export default function SeatingApp() {
       </div>
 
       {/* PRINTABLE PAGES */}
-      {result && result.map((room, idx) => (
-        <React.Fragment key={idx}>
-          <div className="room-container bg-white shadow-sm">
-            <div>
-              <div className="bg-black text-white p-4 flex justify-between items-center border-b-4 border-indigo-600">
-                <h2 className="text-2xl font-black uppercase tracking-tight">ROOM {room.roomNumber} - ATTENDANCE</h2>
-                <div className="text-right"><p className="text-xs font-black uppercase leading-none">{room.teacher}</p></div>
-              </div>
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-100 text-slate-600 text-[10px] font-black uppercase border-b-2 border-black">
-                    <th className="p-2 border-r w-14">Seat ID</th>
-                    <th className="p-2 border-r">Full Name</th>
-                    <th className="p-2 text-center border-r w-10">Class</th>
-                    <th className="p-2 border-r w-24">Subject</th>
-                    <th className="p-2 border-r w-24">Student ID</th>
-                    <th className="p-2 text-center w-28">Signature</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {room.assignedStudents.map((s, i) => (
-                    <tr key={i} className="border-b border-slate-200">
-                      <td className="p-1 font-black text-indigo-700 border-r bg-indigo-50 text-center">{s._seatId}</td>
-                      <td className="p-1 font-black uppercase text-xs">{getVal(s, 'First Name')} {getVal(s, 'Last Name')}</td>
-                      <td className="p-1 text-center font-bold italic border-x bg-slate-50 text-xs">{getVal(s, 'Class')}</td>
-                      <td className="p-1 text-slate-500 text-xs border-r">{getVal(s, 'Subject')}</td>
-                      <td className="p-1 text-[10px] font-bold border-r text-center">{schoolId ? `${schoolId}-` : ""}{getVal(s, 'Student ID')}</td>
-                      <td className="p-1 align-bottom"><div className="border-b border-black h-4"></div></td>
+      {result && result.map((room, idx) => {
+        const breakdown = room.assignedStudents.reduce((acc, s) => {
+          const key = `${getVal(s, 'Class').toUpperCase()} ${getVal(s, 'Subject').toUpperCase()}`;
+          acc[key] = (acc[key] || 0) + 1;
+          return acc;
+        }, {});
+
+        return (
+          <React.Fragment key={idx}>
+            <div className="room-container bg-white shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="bg-black text-white p-4 flex justify-between items-center border-b-4 border-indigo-600">
+                  <h2 className="text-2xl font-black uppercase tracking-tight">ROOM {room.roomNumber} - ATTENDANCE</h2>
+                  <div className="text-right"><p className="text-xs font-black uppercase leading-none">{room.teacher}</p></div>
+                </div>
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-600 text-[10px] font-black uppercase border-b-2 border-black">
+                      <th className="p-2 border-r w-14">Seat ID</th>
+                      <th className="p-2 border-r">Full Name</th>
+                      <th className="p-2 text-center border-r w-10">Class</th>
+                      <th className="p-2 border-r w-24">Subject</th>
+                      <th className="p-2 border-r w-24">Student ID</th>
+                      <th className="p-2 text-center w-28">Signature</th>
                     </tr>
+                  </thead>
+                  <tbody>
+                    {room.assignedStudents.map((s, i) => (
+                      <tr key={i} className="border-b border-slate-200">
+                        <td className="p-1 font-black text-indigo-700 border-r bg-indigo-50 text-center">{s._seatId}</td>
+                        <td className="p-1 font-black uppercase text-xs">{getVal(s, 'First Name')} {getVal(s, 'Last Name')}</td>
+                        <td className="p-1 text-center font-bold italic border-x bg-slate-50 text-xs">{getVal(s, 'Class')}</td>
+                        <td className="p-1 text-slate-500 text-xs border-r">{getVal(s, 'Subject')}</td>
+                        <td className="p-1 text-[10px] font-bold border-r text-center">{schoolId ? `${schoolId}-` : ""}{getVal(s, 'Student ID')}</td>
+                        <td className="p-1 align-bottom"><div className="border-b border-black h-4"></div></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* FOOTER BREAKDOWN SECTION */}
+              <div className="mt-6 pt-4 border-t-2 border-black">
+                <p className="text-[10px] font-black uppercase mb-2">Subject Breakdown</p>
+                <div className="grid grid-cols-3 gap-x-8 gap-y-1">
+                  {Object.entries(breakdown).map(([label, count], bIdx) => (
+                    <div key={bIdx} className="flex justify-between border-b border-dotted border-slate-300 text-[9px] font-bold">
+                      <span className="uppercase">{label}:</span>
+                      <span>{count}</span>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+                
+                <div className="mt-8 flex justify-start items-end border-t border-black pt-4">
+                  <div className="flex gap-10">
+                    <div className="flex items-end gap-2 text-[11px] font-black uppercase">
+                      Total Participated: <span className="border-b border-black w-16 h-4"></span>
+                    </div>
+                    <div className="flex items-end gap-2 text-[11px] font-black uppercase">
+                      Proctor Signature: <span className="border-b border-black w-40 h-4"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="seating-scheme-page bg-white">
-            <div className="border-b-4 border-black pb-2 mb-2">
-              <h2 className="text-2xl font-black uppercase text-center tracking-tighter">Visual Seating Map: Room {room.roomNumber}</h2>
-              <p className="text-center font-bold text-indigo-600 uppercase text-[9px] tracking-widest">ORIENTATION: FRONT</p>
+
+            <div className="seating-scheme-page bg-white">
+              <div className="border-b-4 border-black pb-2 mb-2">
+                <h2 className="text-2xl font-black uppercase text-center tracking-tighter">Visual Seating Map: Room {room.roomNumber}</h2>
+                <p className="text-center font-bold text-indigo-600 uppercase text-[9px] tracking-widest">ORIENTATION: FRONT</p>
+              </div>
+              <SeatingMap assignedStudents={room.assignedStudents} />
             </div>
-            <SeatingMap assignedStudents={room.assignedStudents} />
-          </div>
-        </React.Fragment>
-      ))}
+          </React.Fragment>
+        );
+      })}
     </div>
   );
 }
