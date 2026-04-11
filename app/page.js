@@ -60,25 +60,22 @@ export default function SeatingApp() {
       if (distribution.every(r => r.assignedStudents.length >= r.capacity)) break;
     }
 
-    // Balancing logic: Assign Seat IDs based on equal distribution across columns
+    // Balanced distribution logic across columns L, M, R
     distribution.forEach(room => {
       const totalInRoom = room.assignedStudents.length;
       const studentsToAssign = [...room.assignedStudents];
-      room.assignedStudents = []; // Re-filling with assigned IDs
+      room.assignedStudents = []; 
 
-      const colCounts = [4, 5, 4]; // Max Desks per Column (L, M, R)
+      const colCounts = [4, 5, 4]; 
       let currentStudentIdx = 0;
 
-      // Fill row by row across columns to ensure equal distribution
       for (let deskRow = 1; deskRow <= 5; deskRow++) {
         ["L", "M", "R"].forEach((col, colIdx) => {
           if (deskRow <= colCounts[colIdx]) {
-            // Seat A
             if (currentStudentIdx < totalInRoom) {
               const s = studentsToAssign[currentStudentIdx++];
               room.assignedStudents.push({ ...s, _seatId: `${col}-${deskRow}A` });
             }
-            // Seat B
             if (currentStudentIdx < totalInRoom) {
               const s = studentsToAssign[currentStudentIdx++];
               room.assignedStudents.push({ ...s, _seatId: `${col}-${deskRow}B` });
@@ -122,11 +119,8 @@ export default function SeatingApp() {
 
     return (
       <div className="mt-4 p-4 border-2 border-dashed border-slate-300 rounded-lg flex flex-col h-full">
-        {/* Front of Class at top of visual map */}
         <div className="mb-8 border-4 border-double border-black w-48 mx-auto text-center font-black text-sm p-2 uppercase">Front / Proctor</div>
-        
         <div className="flex justify-around gap-6 flex-1">
-          {/* Column L: Desk 1 is at the top (near front) */}
           <div className="flex-1">
             <p className="text-[12px] font-black mb-4 border-b-2 border-black text-center uppercase">Column L</p>
             {[1, 2, 3, 4].map(num => <Desk key={num} deskRow={num} colId="L" />)}
@@ -154,7 +148,7 @@ export default function SeatingApp() {
           .no-print { display: none !important; }
           body { background: white !important; }
           .room-container, .seating-scheme-page { height: 98vh; display: flex; flex-direction: column; border: 2px solid #000 !important; padding: 15px; }
-          .seating-scheme-page { page-break-before: always; justify-content: flex-start; }
+          .seating-scheme-page { page-break-before: always; }
         }
       `}</style>
 
@@ -166,6 +160,7 @@ export default function SeatingApp() {
             <input type="text" placeholder="e.g. 012" value={schoolId} onChange={(e) => setSchoolId(e.target.value)}
                 className="w-full border-2 border-indigo-100 p-2 rounded-lg text-center font-black outline-none transition-all focus:border-indigo-600"/>
         </div>
+
         <div className="space-y-6 mb-8">
           <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
             <h3 className="font-black mb-1 text-indigo-900 uppercase">1. Classrooms</h3>
@@ -179,8 +174,30 @@ export default function SeatingApp() {
                 </div>
               ))}
             </div>
-            <button onClick={handleAddRoom} className="bg-white border-2 border-indigo-100 text-indigo-600 px-4 py-2 rounded font-bold text-xs">+ Add Room</button>
+            
+            {/* RESTORED UPLOAD BUTTONS SECTION */}
+            <div className="flex gap-2">
+              <button onClick={handleAddRoom} className="bg-white border-2 border-indigo-100 text-indigo-600 px-4 py-2 rounded font-bold text-xs">+ Add Room</button>
+              <div className="relative">
+                <input type="file" onChange={(e) => {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                      const wb = XLSX.read(evt.target.result, { type: 'binary' });
+                      const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                      setRooms(data.map(r => ({ 
+                        number: getVal(r, 'Room Number') || getVal(r, 'classroom name'), 
+                        teacher: getVal(r, 'Teacher') || getVal(r, 'supervisor'), 
+                        capacity: getVal(r, 'Capacity') || getVal(r, 'seat capacity') 
+                      })));
+                    };
+                    reader.readAsBinaryString(file);
+                }} className="absolute inset-0 opacity-0 cursor-pointer"/>
+                <button className="bg-white border-2 border-indigo-100 text-indigo-600 px-4 py-2 rounded font-bold text-xs">↑ Upload Rooms</button>
+              </div>
+            </div>
           </div>
+
           <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
             <h3 className="font-black mb-1 text-indigo-900 uppercase">2. Students</h3>
             <input type="file" onChange={(e) => {
@@ -194,6 +211,7 @@ export default function SeatingApp() {
             }} className="w-full text-xs border border-dashed border-slate-300 p-2 bg-white rounded cursor-pointer"/>
           </div>
         </div>
+
         <button onClick={generateSeating} className="py-3 rounded-lg w-full font-black bg-indigo-600 text-white mb-2 shadow-md">GENERATE PLAN</button>
         {result && <button onClick={() => window.print()} className="bg-emerald-600 text-white py-3 rounded-lg w-full font-black shadow-md">PRINT ALL DOCUMENTS</button>}
       </div>
@@ -237,7 +255,7 @@ export default function SeatingApp() {
           <div className="seating-scheme-page bg-white break-after-page">
             <div className="border-b-4 border-black pb-2 mb-2">
               <h2 className="text-2xl font-black uppercase text-center tracking-tighter">Visual Seating Map: Room {room.roomNumber}</h2>
-              <p className="text-center font-bold text-indigo-600 uppercase text-[9px] tracking-widest">ORIENTATION: LOOKING FROM FRONT</p>
+              <p className="text-center font-bold text-indigo-600 uppercase text-[9px] tracking-widest">ORIENTATION: FRONT</p>
             </div>
             <SeatingMap assignedStudents={room.assignedStudents} />
           </div>
