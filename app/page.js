@@ -20,7 +20,12 @@ export default function SeatingApp() {
   };
   const handleRoomChange = (index, field, value) => {
     const newRooms = [...rooms];
-    newRooms[index][field] = value;
+    // Enforce max 26 limit on capacity input
+    if (field === 'capacity' && Number(value) > 26) {
+        newRooms[index][field] = "26";
+    } else {
+        newRooms[index][field] = value;
+    }
     setRooms(newRooms);
   };
 
@@ -40,7 +45,7 @@ export default function SeatingApp() {
     let distribution = rooms.map(r => ({
       roomNumber: r.number,
       teacher: r.teacher,
-      capacity: Number(r.capacity),
+      capacity: Math.min(Number(r.capacity), 26), // Hard limit to 26
       assignedStudents: []
     }));
 
@@ -107,14 +112,14 @@ export default function SeatingApp() {
           <div className="text-[10px] font-black text-indigo-600 mb-1 uppercase text-left">Desk {colId}-{deskRow}</div>
           <div className="border-2 border-black flex h-16 bg-white shadow-sm">
             <div className="flex-1 border-r border-dashed border-black p-1 flex flex-col justify-center items-center text-center">
-              <span className="text-[7px] text-slate-400 font-bold mb-1">{colId}-${deskRow}A</span>
+              <span className="text-[7px] text-slate-400 font-bold mb-1">{colId}-{deskRow}A</span>
               <span className="text-[9px] font-black uppercase leading-none mb-1">
                 {sA ? `${getVal(sA, 'First Name').charAt(0)}. ${getVal(sA, 'Last Name')}` : "---"}
               </span>
               <span className="text-[8px] font-bold text-indigo-700">{sA ? getVal(sA, 'Class') : ""}</span>
             </div>
             <div className="flex-1 p-1 flex flex-col justify-center items-center text-center">
-              <span className="text-[7px] text-slate-400 font-bold mb-1">{colId}-${deskRow}B</span>
+              <span className="text-[7px] text-slate-400 font-bold mb-1">{colId}-{deskRow}B</span>
               <span className="text-[9px] font-black uppercase leading-none mb-1">
                 {sB ? `${getVal(sB, 'First Name').charAt(0)}. ${getVal(sB, 'Last Name')}` : "---"}
               </span>
@@ -197,14 +202,14 @@ export default function SeatingApp() {
             <h3 className="font-black mb-1 text-indigo-900 uppercase">1. Define Classrooms</h3>
             <p className="text-[14px] leading-relaxed text-slate-700 mb-4">
               Add classrooms manually, or upload a file. <a href="https://docs.google.com/spreadsheets/d/1a9oOhHRCOCa9GNn4pwgECdengxWutN75DmAohtkxGTE/edit?usp=sharing" target="_blank" className="text-indigo-600 font-bold hover:underline">Open template.</a><br/>
-              <span className="text-[12px] text-slate-500 font-bold uppercase">Required: "classroom name", "seat capacity".</span>
+              <span className="text-[12px] text-slate-500 font-bold uppercase">Required: "classroom name", "seat capacity (max 26)".</span>
             </p>
             <div className="space-y-2 mb-4">
               {rooms.map((room, idx) => (
                 <div key={idx} className="flex gap-2 items-center">
                   <input placeholder="Room" value={room.number} onChange={(e) => handleRoomChange(idx, 'number', e.target.value)} className="border p-2 rounded text-xs w-full"/>
                   <input placeholder="Proctor" value={room.teacher} onChange={(e) => handleRoomChange(idx, 'teacher', e.target.value)} className="border p-2 rounded text-xs w-full"/>
-                  <input type="number" placeholder="Cap." value={room.capacity} onChange={(e) => handleRoomChange(idx, 'capacity', e.target.value)} className="border p-2 rounded text-xs w-20"/>
+                  <input type="number" max="26" placeholder="Cap." value={room.capacity} onChange={(e) => handleRoomChange(idx, 'capacity', e.target.value)} className="border p-2 rounded text-xs w-20"/>
                   <button onClick={() => handleRemoveRoom(idx)} className="text-slate-400 p-1">✕</button>
                 </div>
               ))}
@@ -221,7 +226,7 @@ export default function SeatingApp() {
                       setRooms(data.map(r => ({ 
                         number: getVal(r, 'classroom name') || getVal(r, 'Room Number'), 
                         teacher: getVal(r, 'supervisor') || getVal(r, 'Teacher'), 
-                        capacity: getVal(r, 'seat capacity') || getVal(r, 'Capacity') 
+                        capacity: Math.min(getVal(r, 'seat capacity') || getVal(r, 'Capacity'), 26) 
                       })));
                     };
                     reader.readAsBinaryString(file);
@@ -237,15 +242,18 @@ export default function SeatingApp() {
               Upload a .csv file with student data. <a href="https://docs.google.com/spreadsheets/d/1bPI52umqvX3Pr9-4y6sOtvM1TdASKLBBOc67gJsP0f8/edit?usp=sharing" target="_blank" className="text-indigo-600 font-bold hover:underline">Open template.</a><br/>
               <span className="text-[12px] text-slate-500 font-bold uppercase">Required: "first name", "last name", "class", "student id".</span>
             </p>
-            <input type="file" onChange={(e) => {
-               const file = e.target.files[0];
-               const reader = new FileReader();
-               reader.onload = (evt) => {
-                 const wb = XLSX.read(evt.target.result, { type: 'binary' });
-                 setStudents(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
-               };
-               reader.readAsBinaryString(file);
-            }} className="w-full text-xs border border-dashed border-slate-300 p-2 bg-white rounded cursor-pointer"/>
+            <div className="relative mb-4">
+                <input type="file" onChange={(e) => {
+                   const file = e.target.files[0];
+                   const reader = new FileReader();
+                   reader.onload = (evt) => {
+                     const wb = XLSX.read(evt.target.result, { type: 'binary' });
+                     setStudents(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
+                   };
+                   reader.readAsBinaryString(file);
+                }} className="absolute inset-0 opacity-0 cursor-pointer"/>
+                <button className="bg-indigo-600 text-white px-6 py-2 rounded font-bold text-xs uppercase shadow-sm">Add students list</button>
+            </div>
             
             <div className={`mt-4 p-3 rounded-lg text-center font-bold text-xs ${isOverCapacity ? 'bg-red-100 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
               {students.length} Students / {totalSeats} Total Seats Available
