@@ -88,7 +88,7 @@ export default function SeatingApp() {
     setResult(distribution);
   };
 
-  const SeatingMap = ({ assignedStudents, roomNumber, teacher }) => {
+  const SeatingMap = ({ assignedStudents }) => {
     const getStudentBySeat = (id) => assignedStudents.find(s => s._seatId === id) || null;
     
     const breakdown = assignedStudents.reduce((acc, s) => {
@@ -107,14 +107,14 @@ export default function SeatingApp() {
           <div className="text-[10px] font-black text-indigo-600 mb-1 uppercase text-left">Desk {colId}-{deskRow}</div>
           <div className="border-2 border-black flex h-16 bg-white shadow-sm">
             <div className="flex-1 border-r border-dashed border-black p-1 flex flex-col justify-center items-center text-center">
-              <span className="text-[7px] text-slate-400 font-bold mb-1">{colId}-{deskRow}A</span>
+              <span className="text-[7px] text-slate-400 font-bold mb-1">{colId}-${deskRow}A</span>
               <span className="text-[9px] font-black uppercase leading-none mb-1">
                 {sA ? `${getVal(sA, 'First Name').charAt(0)}. ${getVal(sA, 'Last Name')}` : "---"}
               </span>
               <span className="text-[8px] font-bold text-indigo-700">{sA ? getVal(sA, 'Class') : ""}</span>
             </div>
             <div className="flex-1 p-1 flex flex-col justify-center items-center text-center">
-              <span className="text-[7px] text-slate-400 font-bold mb-1">{colId}-{deskRow}B</span>
+              <span className="text-[7px] text-slate-400 font-bold mb-1">{colId}-${deskRow}B</span>
               <span className="text-[9px] font-black uppercase leading-none mb-1">
                 {sB ? `${getVal(sB, 'First Name').charAt(0)}. ${getVal(sB, 'Last Name')}` : "---"}
               </span>
@@ -145,7 +145,6 @@ export default function SeatingApp() {
           </div>
         </div>
 
-        {/* Breakdown and Signatures Moved Here */}
         <div className="mt-6 pt-4 border-t-2 border-black">
           <p className="text-[10px] font-black uppercase mb-2">Subject Breakdown</p>
           <div className="grid grid-cols-3 gap-x-8 gap-y-1">
@@ -210,7 +209,26 @@ export default function SeatingApp() {
                 </div>
               ))}
             </div>
-            <button onClick={handleAddRoom} className="bg-white border-2 border-indigo-100 text-indigo-600 px-4 py-2 rounded font-bold text-xs">+ Add Classroom</button>
+            <div className="flex gap-2">
+              <button onClick={handleAddRoom} className="bg-white border-2 border-indigo-100 text-indigo-600 px-4 py-2 rounded font-bold text-xs">+ Add Classroom</button>
+              <div className="relative">
+                <input type="file" onChange={(e) => {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                      const wb = XLSX.read(evt.target.result, { type: 'binary' });
+                      const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                      setRooms(data.map(r => ({ 
+                        number: getVal(r, 'classroom name') || getVal(r, 'Room Number'), 
+                        teacher: getVal(r, 'supervisor') || getVal(r, 'Teacher'), 
+                        capacity: getVal(r, 'seat capacity') || getVal(r, 'Capacity') 
+                      })));
+                    };
+                    reader.readAsBinaryString(file);
+                }} className="absolute inset-0 opacity-0 cursor-pointer"/>
+                <button className="bg-white border-2 border-indigo-100 text-indigo-600 px-4 py-2 rounded font-bold text-xs">↑ Upload Rooms</button>
+              </div>
+            </div>
           </div>
 
           <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
@@ -229,7 +247,6 @@ export default function SeatingApp() {
                reader.readAsBinaryString(file);
             }} className="w-full text-xs border border-dashed border-slate-300 p-2 bg-white rounded cursor-pointer"/>
             
-            {/* CAPACITY WARNING */}
             <div className={`mt-4 p-3 rounded-lg text-center font-bold text-xs ${isOverCapacity ? 'bg-red-100 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
               {students.length} Students / {totalSeats} Total Seats Available
               {isOverCapacity && <div className="mt-1 uppercase animate-pulse">! Not enough seats !</div>}
@@ -280,7 +297,7 @@ export default function SeatingApp() {
               <h2 className="text-2xl font-black uppercase text-center tracking-tighter">Visual Seating Map: Room {room.roomNumber}</h2>
               <p className="text-center font-bold text-indigo-600 uppercase text-[9px] tracking-widest">ORIENTATION: FRONT</p>
             </div>
-            <SeatingMap assignedStudents={room.assignedStudents} roomNumber={room.roomNumber} teacher={room.teacher} />
+            <SeatingMap assignedStudents={room.assignedStudents} />
           </div>
         </React.Fragment>
       ))}
