@@ -158,9 +158,9 @@ export default function SeatingApp() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
             <h3 className="font-black mb-1 text-indigo-900 uppercase">1. Define Classrooms</h3>
-            <p className="text-[11px] text-slate-600 mb-4">
+            <p className="text-[14px] leading-relaxed text-slate-700 mb-4">
               Add classrooms manually, or upload a file. <a href="https://docs.google.com/spreadsheets/d/1a9oOhHRCOCa9GNn4pwgECdengxWutN75DmAohtkxGTE/edit?usp=sharing" target="_blank" className="text-indigo-600 font-bold hover:underline">Open template.</a><br/>
-              <span className="text-[10px] text-slate-400 font-bold uppercase">Required: "classroom name", "seat capacity".</span>
+              <span className="text-[12px] text-slate-500 font-bold uppercase">Required: "classroom name", "seat capacity".</span>
             </p>
             <div className="space-y-2 mb-4">
               {rooms.map((room, idx) => (
@@ -192,9 +192,9 @@ export default function SeatingApp() {
 
           <div className="bg-slate-50 p-6 rounded-lg border border-slate-200">
             <h3 className="font-black mb-1 text-indigo-900 uppercase">2. Upload Student List</h3>
-            <p className="text-[11px] text-slate-600 mb-4">
+            <p className="text-[14px] leading-relaxed text-slate-700 mb-4">
               Upload a .csv file with student data. <a href="https://docs.google.com/spreadsheets/d/1bPI52umqvX3Pr9-4y6sOtvM1TdASKLBBOc67gJsP0f8/edit?usp=sharing" target="_blank" className="text-indigo-600 font-bold hover:underline">Open template.</a><br/>
-              <span className="text-[10px] text-slate-400 font-bold uppercase">Required: "first name", "last name", "class", "student id".</span>
+              <span className="text-[12px] text-slate-500 font-bold uppercase">Required: "first name", "last name", "class", "student id".</span>
             </p>
             <input type="file" onChange={(e) => {
                const file = e.target.files[0];
@@ -215,8 +215,11 @@ export default function SeatingApp() {
 
       {/* PRINTABLE PAGES */}
       {result && result.map((room, idx) => {
+        // Group by Grade Number + Subject
         const breakdown = room.assignedStudents.reduce((acc, s) => {
-          const key = `${getVal(s, 'Class').toUpperCase()} ${getVal(s, 'Subject').toUpperCase()}`;
+          const gradeNum = getVal(s, 'Class').match(/\d+/)?.[0] || "";
+          const subject = getVal(s, 'Subject').toUpperCase();
+          const key = `${gradeNum}th Grade ${subject}`;
           acc[key] = (acc[key] || 0) + 1;
           return acc;
         }, {});
